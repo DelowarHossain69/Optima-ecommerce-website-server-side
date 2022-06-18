@@ -45,6 +45,7 @@ async function run() {
           totalSells: 1
         })
         .toArray();
+        const latest = result.reverse();
       res.send(result);
     });
 
