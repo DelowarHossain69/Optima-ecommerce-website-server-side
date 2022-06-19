@@ -25,6 +25,7 @@ async function run() {
   try {
     await client.connect();
     const productCollection = client.db("Optima").collection("products");
+    const orderCollection = client.db("Optima").collection("orders");
 
     /**
      *  Title : Product management system
@@ -92,7 +93,16 @@ async function run() {
     });
 
 
+    /**
+     * Title : Order management
+     * 
+     * */ 
 
+    app.post('/placeOrder', async(req, res)=>{
+      const orderInfo = req.body;
+      const result = await orderCollection.insertOne(orderInfo);
+      res.send(result);
+    });
 
 
 
@@ -104,7 +114,7 @@ async function run() {
   app.post('/create-payment-intent', async(req, res)=>{
     const {price} = req.body;
     const amount = price * 100;
-    console.log(price);
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency : 'usd',
