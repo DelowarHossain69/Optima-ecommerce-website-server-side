@@ -4,6 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRECT_KEY);
 
 app.use(express.json());
 app.use(cors());
@@ -89,6 +90,29 @@ async function run() {
       const product = await productCollection.findOne(query);
       res.send(product);
     });
+
+
+
+
+
+
+  /**
+   *  Payment get way. ( Strip )
+   * 
+   * */  
+
+  app.post('/create-payment-intent', async(req, res)=>{
+    const {price} = req.body;
+    const amount = price * 100;
+    console.log(price);
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency : 'usd',
+      payment_method_types : ["card"]
+    });
+
+    res.send({clientSecret: paymentIntent.client_secret})
+  });
 
   } finally {
   }
