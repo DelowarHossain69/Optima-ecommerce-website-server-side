@@ -5,6 +5,7 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const stripe = require("stripe")(process.env.STRIPE_SECRECT_KEY);
+const JWT = require('jsonwebtoken');
 
 app.use(express.json());
 app.use(cors());
@@ -13,6 +14,34 @@ app.use(cors());
 app.get("/", (req, res) => {
   res.send("Hello world!");
 });
+
+// Verify token
+function verifyToken(req, res, next){
+  const auth = req.headers.auth;
+
+  if(! auth){
+    return res.status(401).send({message : 'Unauthorize access'});
+  }
+
+  const token = auth.split(' ')[1];
+  JWT.verify(token, process.env.AUTH_SECRET_KEY, (error, decoded) =>{
+    if(error){
+     return res.status(403).send({message : 'Forbidden access'});
+    }
+
+    const email = req.query.email;
+    const decodedEmail = decoded.email;
+
+    if(email === decodedEmail){
+     return next();
+    }
+    else{
+      return res.status(403).send({message : 'Forbidden access'});
+    }
+  });
+
+}
+
 
 const uri = `mongodb+srv://${process.env.DB_PASS}:${process.env.DB_USER}@cluster0.xlld7.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
@@ -26,6 +55,7 @@ async function run() {
     await client.connect();
     const productCollection = client.db("Optima").collection("products");
     const orderCollection = client.db("Optima").collection("orders");
+    const userCollection = client.db("Optima").collection("users");
 
     /**
      *  Title : Product management system
@@ -98,13 +128,39 @@ async function run() {
      * 
      * */ 
 
-    app.post('/placeOrder', async(req, res)=>{
+    // Place order
+    app.post('/placeOrder', verifyToken, async(req, res)=>{
       const orderInfo = req.body;
       const result = await orderCollection.insertOne(orderInfo);
       res.send(result);
     });
 
+  
+    /**
+     *  Title : User management
+     * 
+     * */
+    
+    // set role
+    app.put('/setRole', async(req, res) =>{
 
+    });
+
+    // insert a user and send provide verify key
+    app.put('/login', async(req, res)=>{
+      const userInfo = req.body;
+      const {email} = userInfo;
+      const query = {email : email};
+      const option = {upsert : true};
+      const updatedDoc = {$set : userInfo};
+      const result = await userCollection.updateOne(query, updatedDoc, option);
+
+      const token = JWT.sign({email}, process.env.AUTH_SECRET_KEY, {
+        expiresIn: '1d'
+      });
+
+      res.send({token});
+    });
 
   /**
    *  Payment get way. ( Strip )
